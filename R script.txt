@@ -106,5 +106,14 @@ plotweb(otu,
         y.lim = NULL,
         x.lim = NULL
 )
+library(RInSp)
+data <- read_excel("data", sheet = "1")
+head(data)
+resource_use <- as.matrix(data[, -1]) 
+individuals <- data[[1]]
+data_rinsp <- import.RInSp(resource_use, data.type = "integer")
+psi_results <- PSicalc(data_rinsp, replicates = 999)
+print(psi_results)
+
 
 
