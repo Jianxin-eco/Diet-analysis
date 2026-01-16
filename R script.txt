@@ -1,0 +1,110 @@
+library(readxl)
+library(vegan)
+library(ggplot2)
+library(showtext)
+data <- read_excel("data", sheet = "GS")
+git <- data$GIT
+data <- data[, !(names(data) %in% c("GIT"))]
+data <- na.omit(data)
+data_normalized <- decostand(data, method = "total")
+bray_curtis_dist <- vegdist(data_normalized, method = "bray")
+adonis_result <- adonis2(bray_curtis_dist ~ git, method = "bray", permutations = 9999)
+anosim_result <- anosim(bray_curtis_dist, git, permutations = 9999)
+pcoa_result <- cmdscale(bray_curtis_dist, k = 2, eig = TRUE)
+eigenvalues <- pcoa_result$eig
+total_eigenvalue <- sum(eigenvalues)
+explained_variance <- eigenvalues / total_eigenvalue * 100
+data.frame(PCoA_Axis = 1:length(eigenvalues), 
+           Eigenvalue = eigenvalues, 
+           Explained_Variance = explained_variance)
+pcoa_points <- as.data.frame(pcoa_result$points)
+pcoa_points$git <- git 
+pcoa_points$git <- factor(pcoa_points$git, 
+                          levels = c("TG-RUM", "TG-DUO", "TG-JEJ", "TG-ILE", "TG-CEC", "TG-COL", "TG-REC"))
+git_colors <- c("TG-RUM" = "#00AEEF",
+                "TG-DUO" = "#FF7F0E",
+                "TG-JEJ" = "#BBEF78",
+                "TG-ILE" = "#ED008C",
+                "TG-CEC" = "#0000FF",
+                "TG-COL" = "#8C564B",
+                "TG-REC" = "#8762B7")
+git_shapes <- c("TG-RUM" = 16,   
+                "TG-DUO" = 17,   
+                "TG-JEJ" = 15,   
+                "TG-ILE" = 18,   
+                "TG-CEC" = 3,    
+                "TG-COL" = 4,    
+                "TG-REC" = 8)    
+p <- ggplot(pcoa_points, aes(x = V1, y = V2)) +
+  geom_point(aes(color = git, shape = git),  
+             size = 1.5,          
+             stroke = 0.3) +               
+  scale_color_manual(values = git_colors) + 
+  scale_shape_manual(values = git_shapes) +  
+  scale_x_continuous(limits = c(-0.4, 0.55), 
+                     breaks = seq(-1.5, 1.5, by = 0.1)) +
+  scale_y_continuous(limits = c(-0.4, 0.5),
+                     breaks = seq(-1.5, 1.5, by = 0.1)) +
+  theme_minimal(base_family = "Calibri") +
+  labs(
+    x = paste("PCoA1 (Eigenvalue =", round(pcoa_result$eig[1], 3), ")"),
+    y = "PCoA2"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    legend.position = "none",                
+    axis.title = element_text(size = 6),
+    axis.text = element_text(size = 5, color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.3),
+    plot.margin = margin(1, 1, 1, 1, "pt"),
+    axis.ticks = element_line(color = "black", linewidth = 0.3),
+    axis.ticks.length = unit(0.05, "cm"),  
+    axis.ticks.length.x = unit(0.05, "cm"),  
+    axis.ticks.length.y = unit(0.05, "cm")   
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey", linewidth = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey", linewidth = 0.3)
+print(p)
+
+library(tidyverse)
+library(bipartite)
+library(openxlsx)
+data <- read.xlsx("data", sheet = "group")
+long_data <- data %>%
+  pivot_longer(cols = -Family, names_to = "Month", values_to = "Relative_Abundance") %>%
+  filter(Relative_Abundance > 0) %>%
+  mutate(Relative_Abundance = round(Relative_Abundance, 3))
+otu <- long_data %>%
+  pivot_wider(names_from = Month, values_from = Relative_Abundance, values_fill = 0) %>%
+  column_to_rownames("Family") %>%
+  as.matrix()
+plotweb(otu,
+        method = "normal",
+        labsize = 0.6,
+        y.width.low = 0.03,
+        y.width.high = 0.03,
+        arrow = "no",
+        col.interaction = "#e4e3e5",
+        col.high = "#fae69e",
+        col.low = "#b8aeeb",
+        bor.col.interaction = "#cbcbcf",
+        bor.col.high = NULL,
+        bor.col.low = NULL,
+        low.abun.col = "blue",
+        bor.low.abun.col = "black",
+        high.abun = NULL,
+        high.abun.col = "red",
+        bor.high.abun.col = "black",
+        text.rot = 90,
+        text.high.col = "red",
+        text.low.col = "blue",
+        plot.axes = FALSE,
+        low.y = 0.5,
+        high.y = 0.9,
+        add = FALSE,
+        y.lim = NULL,
+        x.lim = NULL
+)
+
+
