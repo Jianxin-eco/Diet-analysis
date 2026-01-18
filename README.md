@@ -1,2 +1,0 @@
-# Diet-analysis
-Rstudio code
